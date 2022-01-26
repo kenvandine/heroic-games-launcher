@@ -1,0 +1,81 @@
+name: heroic-games-launcher
+base: core20
+adopt-info: heroic-games-launcher
+summary: Heroic Games Launcher
+description: |
+   Heroic Games Launcher
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+compression: lzo
+
+parts:
+  heroic-games-launcher:
+    plugin: nil
+    build-packages:
+      - gcc
+      - wget
+      - jq
+      - dpkg
+      - git
+    stage-packages:
+      - libxss1
+      - libnspr4
+      - libnss3
+      - libvips42
+    override-build: |
+      set -xeu
+      echo "Get GitHub releases..."
+      wget --quiet https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases -O releases.json
+      # Get the version from the tag_name and the download URL.
+      VERSION=$(jq . releases.json | grep tag_name | grep -v beta | head -n 1 | cut -d'"' -f4 | tr -d 'v')
+      DEB_URL="https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/releases/download/v"$VERSION"/heroic_"$VERSION"_amd64.deb
+      wget --quiet $DEB_URL -O heroic-games-launcher.deb
+      dpkg-deb -x heroic-games-launcher.deb $SNAPCRAFT_PART_INSTALL/
+      rm heroic-games-launcher.deb releases.json
+      sed -i 's|Icon=heroic|Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/heroic.png|' $SNAPCRAFT_PART_INSTALL/usr/share/applications/heroic.desktop
+      snapcraftctl set-version "$VERSION"
+    prime:
+      - -opt/*/chrome-sandbox
+      - -opt/*/resources/app.asar.unpacked/node_modules/sharp/vendor/lib
+      - -opt/*/resources/app.asar.unpacked/node_modules/sharp/vendor/include
+
+  cleanup:
+    after: [ heroic-games-launcher ]
+    plugin: nil
+    build-snaps: [ gnome-3-38-2004 ]
+    override-prime: |
+        set -eux
+        cd /snap/gnome-3-38-2004/current
+        find . -type f,l -exec rm -f $SNAPCRAFT_PRIME/{} \;
+        for CRUFT in bug lintian man; do
+          rm -rf $SNAPCRAFT_PRIME/usr/share/$CRUFT
+        done
+        find $SNAPCRAFT_PRIME/usr/share/doc/ -type f -not -name 'copyright' -delete
+
+plugs:
+  browser-sandbox:
+    interface: browser-support
+    allow-sandbox: true
+
+apps:
+  heroic-games-launcher:
+    extensions: [gnome-3-38]
+    desktop: usr/share/applications/heroic.desktop
+    command: opt/Heroic/heroic --use-tray-icon
+    plugs:
+      - browser-sandbox
+      - camera
+      - home
+      - network
+      - audio-playback
+      - audio-record
+      - removable-media
+    environment:
+      DISABLE_WAYLAND: '1'
+      GTK_USE_PORTAL: "1"
+      TMPDIR: $XDG_RUNTIME_DIR
+      WAYLAND_DISPLAY: no-display
