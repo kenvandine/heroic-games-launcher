@@ -3,7 +3,7 @@ base: core20
 adopt-info: heroic-games-launcher
 summary: Heroic Games Launcher
 description: |
-   Heroic Games Launcher
+   An Open Source alternative to the Epic Games launcher
 
 grade: stable
 confinement: strict
@@ -22,6 +22,9 @@ parts:
       - dpkg
       - git
     stage-packages:
+      - curl
+      - gawk
+      - xz-utils
       - libxss1
       - libnspr4
       - libnss3
@@ -32,7 +35,7 @@ parts:
       wget --quiet https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases -O releases.json
       # Get the version from the tag_name and the download URL.
       VERSION=$(jq . releases.json | grep tag_name | grep -v beta | head -n 1 | cut -d'"' -f4 | tr -d 'v')
-      DEB_URL="https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/releases/download/v"$VERSION"/heroic_"$VERSION"_amd64.deb
+      DEB_URL="https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/releases/download/v"$VERSION"/heroic_"$VERSION"_amd64.deb"
       wget --quiet $DEB_URL -O heroic-games-launcher.deb
       dpkg-deb -x heroic-games-launcher.deb $SNAPCRAFT_PART_INSTALL/
       rm heroic-games-launcher.deb releases.json
@@ -68,7 +71,6 @@ apps:
     command: opt/Heroic/heroic --use-tray-icon
     plugs:
       - browser-sandbox
-      - camera
       - home
       - network
       - audio-playback
@@ -79,3 +81,4 @@ apps:
       GTK_USE_PORTAL: "1"
       TMPDIR: $XDG_RUNTIME_DIR
       WAYLAND_DISPLAY: no-display
+      HOME: $SNAP_USER_COMMON
